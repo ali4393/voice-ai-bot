@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Voice AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- PDF Export Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .message-anim { animation: slideIn 0.3s ease-out forwards; }
+
+        @keyframes soundWave { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.5); } }
+        .speaking .fa-robot { animation: soundWave 0.5s ease-in-out infinite; color: #22d3ee; }
+
+        .markdown-body pre { background: #1e293b; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; position: relative; margin: 0.5rem 0; }
+        .dark .markdown-body pre { background: #0f172a; }
+        .markdown-body code { font-family: 'Courier New', monospace; font-size: 0.9em; }
+        .markdown-body p { margin-bottom: 0.5rem; }
+        .markdown-body ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 0.5rem; }
+        
+        .copy-btn { position: absolute; top: 0.5rem; right: 0.5rem; background: #334155; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; cursor: pointer; opacity: 0; transition: opacity 0.2s; }
+        .markdown-body pre:hover .copy-btn { opacity: 1; }
+
+        @keyframes pulse-ring { 0% { transform: scale(0.8); opacity: 0.5; } 80%, 100% { transform: scale(2); opacity: 0; } }
+        .mic-active::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid #ef4444; animation: pulse-ring 1.5s infinite; }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans h-screen flex overflow-hidden transition-colors duration-300">
+
+    <!-- LEFT SIDEBAR -->
+    <aside class="w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col hidden md:flex transition-colors duration-300">
+        <div class="p-4">
+            <button id="newChatBtn" class="w-full flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl transition-colors font-medium text-sm">
+                <i class="fa-solid fa-plus"></i>
+                <span>New Chat</span>
+            </button>
+        </div>
+        <div class="flex-1 overflow-y-auto px-3 space-y-2">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">Recent</p>
+            <div id="historyList"></div>
+        </div>
+        <div class="p-4 border-t border-gray-200 dark:border-gray-800">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white">JD</div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-900 dark:text-gray-200 truncate">John Doe</p>
+                    <p class="text-xs text-gray-500 truncate">Pro Plan</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN CHAT AREA -->
+    <main class="flex-1 flex flex-col relative">
+        <header class="h-16 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6 bg-white/80 dark:bg-gray-950/80 backdrop-blur z-10 transition-colors duration-300">
+            <div class="flex items-center space-x-3">
+                <h1 class="text-lg font-semibold text-gray-900 dark:text-white">Premium Voice AI</h1>
+                <span class="text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full border border-green-500/20">Online</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <!-- Persona Selector -->
+                <select id="personaSelect" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-300 text-xs rounded-lg p-2 cursor-pointer">
+                    <option value="default">🤖 Default Assistant</option>
+                    <option value="coder"> Expert Coder</option>
+                    <option value="teacher">🎓 Friendly Tutor</option>
+                    <option value="professional">💼 Business Pro</option>
+                </select>
+                <!-- Language Selector -->
+                <select id="langSelect" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-300 text-sm rounded-lg p-2 cursor-pointer">
+                    <option value="en-US">🇺🇸 English</option>
+                    <option value="ur-PK">🇵🇰 Urdu</option>
+                    <option value="es-ES">🇪 Spanish</option>
+                    <option value="fr-FR">🇫🇷 French</option>
+                </select>
+                <!-- Theme Toggle -->
+                <button id="themeToggle" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                    <i class="fa-solid fa-moon dark:hidden"></i>
+                    <i class="fa-solid fa-sun hidden dark:block"></i>
+                </button>
+                <!-- PDF Export -->
+                <button id="exportPdfBtn" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="Export to PDF">
+                    <i class="fa-solid fa-file-pdf"></i>
+                </button>
+            </div>
+        </header>
+
+        <div id="chatContainer" class="flex-1 overflow-y-auto p-6 space-y-6 transition-colors duration-300">
+            <div id="welcomeScreen" class="flex flex-col items-center justify-center py-20 text-center space-y-6">
+                <div class="w-20 h-20 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <i class="fa-solid fa-microphone-lines text-3xl text-white"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">How can I help you today?</h2>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm max-w-md">Speak in multiple languages, choose a persona, and export your chats.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-4 md:p-6 bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 transition-colors duration-300">
+            <div class="max-w-3xl mx-auto relative">
+                <div id="thinkingStatus" class="hidden absolute -top-8 left-0 text-xs text-cyan-600 dark:text-cyan-400 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-notch fa-spin"></i>
+                    <span id="thinkingText">AI is thinking...</span>
+                </div>
+
+                <div class="flex items-end gap-2 bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-2xl p-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-all shadow-lg">
+                    <button id="micBtn" class="relative p-3 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-800 rounded-xl transition-colors">
+                        <i class="fa-solid fa-microphone text-lg"></i>
+                    </button>
+                    <textarea id="userInput" rows="1" placeholder="Type or speak your message..." 
+                        class="flex-1 bg-transparent px-2 py-3 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none resize-none max-h-32"></textarea>
+                    <button id="sendBtn" class="p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-md disabled:opacity-50">
+                        <i class="fa-solid fa-paper-plane text-sm"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const chatContainer = document.getElementById('chatContainer');
+            const userInput = document.getElementById('userInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const micBtn = document.getElementById('micBtn');
+            const langSelect = document.getElementById('langSelect');
+            const personaSelect = document.getElementById('personaSelect');
+            const themeToggle = document.getElementById('themeToggle');
+            const exportPdfBtn = document.getElementById('exportPdfBtn');
+            const historyList = document.getElementById('historyList');
+            const thinkingStatus = document.getElementById('thinkingStatus');
+
+            let isFirstMessageOfSession = true;
+            marked.setOptions({ breaks: true, gfm: true });
+
+            // Theme Toggle
+            themeToggle.addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+            });
+
+            // PDF Export
+            exportPdfBtn.addEventListener('click', () => {
+                const element = document.getElementById('chatContainer');
+                const opt = {
+                    margin: 10, filename: 'AI_Chat_Export.pdf',
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, backgroundColor: document.documentElement.classList.contains('dark') ? '#030712' : '#ffffff' },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+                html2pdf().set(opt).from(element).save();
+            });
+
+            // Speech Recognition
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            let recognition;
+            let isListening = false;
+
+            if (SpeechRecognition) {
+                recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.onstart = () => {
+                    isListening = true;
+                    micBtn.classList.add('mic-active', 'text-red-500');
+                };
+                recognition.onend = () => {
+                    isListening = false;
+                    micBtn.classList.remove('mic-active', 'text-red-500');
+                };
+                recognition.onresult = (event) => {
+                    userInput.value = event.results[0][0].transcript;
+                };
+            } else { micBtn.style.display = 'none'; }
+
+            micBtn.addEventListener('click', () => {
+                if (!recognition) return;
+                if (isListening) recognition.stop();
+                else { recognition.lang = langSelect.value; recognition.start(); }
+            });
+
+            function addToSidebarHistory(title) {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left px-3 py-2.5 rounded-lg text-gray-500 dark:text-gray-400 text-sm truncate hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors flex items-center gap-2";
+                btn.innerHTML = `<i class="fa-regular fa-message"></i> <span class="truncate">${title}</span>`;
+                historyList.prepend(btn);
+            }
+
+            async function sendMessage() {
+                const text = userInput.value.trim();
+                if (!text) return;
+
+                window.speechSynthesis.cancel();
+                if (isFirstMessageOfSession) { addToSidebarHistory(text); isFirstMessageOfSession = false; }
+
+                document.getElementById('welcomeScreen')?.remove();
+                appendMessage('user', text);
+                userInput.value = '';
+
+                sendBtn.disabled = true;
+                micBtn.disabled = true;
+                thinkingStatus.classList.remove('hidden');
+
+                try {
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            message: text, 
+                            language: langSelect.options[langSelect.selectedIndex].text,
+                            persona: personaSelect.value
+                        })
+                    });
+                    const data = await response.json();
+                    thinkingStatus.classList.add('hidden');
+
+                    if (data.success) {
+                        streamMessage('agent', data.reply);
+                    } else {
+                        appendMessage('agent', `Error: ${data.error}`);
+                    }
+                } catch (err) {
+                    thinkingStatus.classList.add('hidden');
+                    appendMessage('agent', 'Connection error.');
+                } finally {
+                    sendBtn.disabled = false;
+                    micBtn.disabled = false;
+                }
+            }
+
+            sendBtn.addEventListener('click', sendMessage);
+            userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+
+            document.getElementById('newChatBtn').addEventListener('click', async () => {
+                window.speechSynthesis.cancel();
+                await fetch('/api/reset', { method: 'POST' });
+                isFirstMessageOfSession = true;
+                chatContainer.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-20 text-center space-y-6 message-anim" id="welcomeScreen">
+                        <div class="w-20 h-20 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                            <i class="fa-solid fa-microphone-lines text-3xl text-white"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">New Chat Started</h2>
+                            <p class="text-gray-500 dark:text-gray-400 text-sm max-w-md">Memory cleared. How can I help you today?</p>
+                        </div>
+                    </div>`;
+            });
+
+            function appendMessage(role, text) {
+                const isUser = role === 'user';
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `flex items-start space-x-3 max-w-3xl mx-auto message-anim ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`;
+                
+                const iconBg = isUser ? 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300' : 'bg-indigo-600 text-white';
+                const icon = isUser ? 'fa-user' : 'fa-robot';
+                const bubbleBg = isUser ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-gray-200 rounded-tl-none markdown-body';
+                
+                const content = isUser ? text : marked.parse(text);
+
+                msgDiv.innerHTML = `
+                    <div class="${iconBg} w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm ai-avatar">
+                        <i class="fa-solid ${icon} text-sm"></i>
+                    </div>
+                    <div class="${bubbleBg} p-4 rounded-2xl shadow-sm max-w-[85%] relative group">
+                        <div class="text-sm leading-relaxed whitespace-pre-wrap message-content">${content}</div>
+                        ${!isUser ? '<button class="copy-btn absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"><i class="fa-regular fa-copy"></i></button>' : ''}
+                    </div>
+                `;
+                chatContainer.appendChild(msgDiv);
+                
+                msgDiv.querySelectorAll('pre').forEach(pre => {
+                    const btn = pre.querySelector('.copy-btn');
+                    btn.onclick = () => {
+                        navigator.clipboard.writeText(pre.querySelector('code').innerText);
+                        btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                        setTimeout(() => btn.innerHTML = '<i class="fa-regular fa-copy"></i>', 2000);
+                    };
+                });
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+
+            // Typewriter Streaming Effect
+            function streamMessage(role, fullText) {
+                const isUser = role === 'user';
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `flex items-start space-x-3 max-w-3xl mx-auto message-anim ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`;
+                
+                const iconBg = isUser ? 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300' : 'bg-indigo-600 text-white';
+                const bubbleBg = isUser ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-gray-200 rounded-tl-none markdown-body';
+
+                msgDiv.innerHTML = `
+                    <div class="${iconBg} w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm ai-avatar">
+                        <i class="fa-solid ${isUser ? 'fa-user' : 'fa-robot'} text-sm"></i>
+                    </div>
+                    <div class="${bubbleBg} p-4 rounded-2xl shadow-sm max-w-[85%]">
+                        <div class="text-sm leading-relaxed whitespace-pre-wrap message-content"></div>
+                    </div>
+                `;
+                chatContainer.appendChild(msgDiv);
+                
+                const contentDiv = msgDiv.querySelector('.message-content');
+                let index = 0;
+                
+                // Simple word-by-word reveal for stability
+                const words = fullText.split(' ');
+                const interval = setInterval(() => {
+                    if (index < words.length) {
+                        contentDiv.innerHTML = marked.parse(words.slice(0, index + 1).join(' '));
+                        index++;
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                    } else {
+                        clearInterval(interval);
+                        contentDiv.innerHTML = marked.parse(fullText); // Final clean render
+                        // Add copy buttons after streaming finishes
+                        msgDiv.querySelectorAll('pre').forEach(pre => {
+                            const btn = document.createElement('button');
+                            btn.className = 'copy-btn';
+                            btn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+                            btn.onclick = () => {
+                                navigator.clipboard.writeText(pre.querySelector('code').innerText);
+                                btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                                setTimeout(() => btn.innerHTML = '<i class="fa-regular fa-copy"></i>', 2000);
+                            };
+                            pre.appendChild(btn);
+                        });
+                    }
+                }, 30); // Speed of typing
+            }
+        });
+    </script>
+</body>
+</html>

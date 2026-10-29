@@ -1,0 +1,24 @@
+=========================================
+PREMIUM VOICE AI CHATBOT - SETUP
+=========================================
+
+Prerequisites:
+- You must have Node.js installed (Download from nodejs.org if needed).
+
+How to run the project:
+1. Extract/Unzip this folder to your Desktop.
+2. Open this folder in your terminal or VS Code.
+3. Run this command to install dependencies:
+   npm install
+4. Run this command to start the server:
+   node server.js
+5. Open your web browser and go to:
+   http://localhost:3000
+
+Features to test:
+- Click the microphone to speak.
+- Change the language dropdown to "Urdu" or "Spanish" to see multi-language support.
+- Ask it to write code to see the "Copy" button feature.
+- Click "New Chat" in the sidebar to clear memory.
+
+Note: The OpenRouter API key is already included in server.js for this demo.
